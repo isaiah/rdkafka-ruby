@@ -177,6 +177,13 @@ module Rdkafka
     attach_function :rd_kafka_header_get_all, [:pointer, :size_t, :pointer, :pointer, SizePtr], :int
     attach_function :rd_kafka_message_headers, [:pointer, :pointer], :int
 
+    # oauthbearer
+    callback :oauthbearer_token_refresh_cb_function, [:pointer, :pointer, :pointer], :void
+
+    attach_function :rd_kafka_conf_set_oauthbearer_token_refresh_cb, [:pointer, :oauthbearer_token_refresh_cb_function], :void
+    attach_function :rd_kafka_oauthbearer_set_token, [:pointer, :string, :int, :string, :pointer, :size_t, :pointer, :size_t], :pointer
+    attach_function :rd_kafka_oauthbearer_set_token_failure, [:pointer, :pointer], :pointer
+
     # Rebalance
 
     callback :rebalance_cb_function, [:pointer, :int, :pointer, :pointer], :void
@@ -261,6 +268,15 @@ module Rdkafka
           opaque.call_delivery_callback(Rdkafka::Producer::DeliveryReport.new(message[:partition], message[:offset], message[:err]))
         end
       end
+    end
+
+    def self.oauthbearer_set_token(kafka_ptr, principal, oauth_token)
+      token = oauth_token.token
+      expires_at = oauth_token.expires_at
+      extensions = FFI::Pointer::NULL
+      errstr = FFI::MemoryPointer.new(:char, 512)
+      ret = rd_kafka_oauthbearer_set_token(kafka_ptr, token, expires_at, principal, extensions, 0, errstr, errstr.size)
+      [ret, errstr]
     end
   end
 end

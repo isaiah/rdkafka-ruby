@@ -101,6 +101,20 @@ module Rdkafka
       @consumer_rebalance_listener = listener
     end
 
+    # Set OauthBearer Token refresh callback
+    #
+    # @param token_provider [Object, #token]
+    def token_provider=(token_provider)
+      raise TypeError.new("Token provider must provide a #token method") unless token_provider.respond_to? :token
+      @token_provider = token_provider
+      @oauthbearer_token_refresh_callback = Proc.new do |kafka, config, opaque|
+        err, str = Rdkafka::Bindings.oauthbearer_set_token(kafka, @token_provider.principal, @token_provider)
+        if err != nil
+          Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(kafka, str)
+        end
+      end
+    end
+
     # Create a consumer with this configuration.
     #
     # @raise [ConfigError] When the configuration contains invalid options
@@ -120,6 +134,11 @@ module Rdkafka
 
       # Redirect the main queue to the consumer
       Rdkafka::Bindings.rd_kafka_poll_set_consumer(kafka)
+      if @token_provider
+        # initial call to set the token
+        @oauthbearer_token_refresh_callback.call(kafka, config, opaque)
+        Rdkafka::Bindings.rd_kafka_conf_set_oauthbearer_token_refresh_cb(config, @oauthbearer_token_refresh_callback) 
+      end
 
       # Return consumer with Kafka client
       Rdkafka::Consumer.new(kafka)
