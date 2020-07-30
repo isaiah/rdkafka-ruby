@@ -20,6 +20,10 @@ class OauthbearerTokenProvider
     @client_id
   end
 
+  def expires_at
+    oauth_token.expires_at
+  end
+
   private
 
   def oauth_token
@@ -35,6 +39,6 @@ class OauthbearerTokenProvider
 
   def remaining_token_ttl
     return 0 unless @oauth_token
-    Time.at(@oauth_token.expires_at) - Time.now
+    Time.at(expires_at) - Time.now
   end
 end
