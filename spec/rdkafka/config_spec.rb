@@ -39,7 +39,7 @@ describe Rdkafka::Config do
 
   context "oauthbearer token provider" do
     let(:token_provider) do
-      double(:OauthbearerTokenProvider, principal: "test", token: "abcd", expires_at: Time.now.to_i + 3_600_000)
+      double(:OauthbearerTokenProvider, principal: "test", expires_at: Time.now.to_i + 3_600_000)
       #OauthbearerTokenProvider.new('user', 'password', 'https://openid.net')
     end
 
@@ -52,8 +52,9 @@ describe Rdkafka::Config do
     it "should set authentication to OAUTHBEARER when given a token provider"
 
     it "should set oauth token when create a new consumer" do
-      #expect(:token_provider).to receive(:token).and_return("abcd")
-      config.token_provider = token_provider
+      provider = double(:OauthbearerTokenProvider, principal: "test", expires_at: Time.now.to_i + 3_600_000)
+      expect(provider).to receive(:token).and_return("abcd")
+      config.token_provider = provider
       config.consumer
     end
   end

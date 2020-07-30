@@ -157,8 +157,15 @@ module Rdkafka
       config = native_config(opaque)
       # Set callback to receive delivery reports on config
       Rdkafka::Bindings.rd_kafka_conf_set_dr_msg_cb(config, Rdkafka::Bindings::DeliveryCallback)
+      kafka = native_kafka(config, :rd_kafka_producer)
+      if @token_provider
+        # initial call to set the token
+        @oauthbearer_token_refresh_callback.call(kafka, config, opaque)
+        Rdkafka::Bindings.rd_kafka_conf_set_oauthbearer_token_refresh_cb(config, @oauthbearer_token_refresh_callback) 
+      end
+
       # Return producer with Kafka client
-      Rdkafka::Producer.new(native_kafka(config, :rd_kafka_producer)).tap do |producer|
+      Rdkafka::Producer.new(kafka).tap do |producer|
         opaque.producer = producer
       end
     end
