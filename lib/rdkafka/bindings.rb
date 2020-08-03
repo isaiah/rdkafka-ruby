@@ -181,7 +181,7 @@ module Rdkafka
     callback :oauthbearer_token_refresh_cb_function, [:pointer, :pointer, :pointer], :void
 
     attach_function :rd_kafka_conf_set_oauthbearer_token_refresh_cb, [:pointer, :oauthbearer_token_refresh_cb_function], :void
-    attach_function :rd_kafka_oauthbearer_set_token, [:pointer, :string, :int, :string, :pointer, :size_t, :pointer, :size_t], :pointer
+    attach_function :rd_kafka_oauthbearer_set_token, [:pointer, :string, :int64, :string, :pointer, :size_t, :pointer, :size_t], :int
     attach_function :rd_kafka_oauthbearer_set_token_failure, [:pointer, :pointer], :pointer
 
     # Rebalance
@@ -272,11 +272,13 @@ module Rdkafka
 
     def self.oauthbearer_set_token(kafka_ptr, principal, oauth_token)
       token = oauth_token.token
-      expires_at = oauth_token.expires_at
+      expires_at = oauth_token.expires_at * 1000
       extensions = FFI::Pointer::NULL
-      errstr = FFI::MemoryPointer.new(:char, 512)
-      ret = rd_kafka_oauthbearer_set_token(kafka_ptr, token, expires_at, principal, extensions, 0, errstr, errstr.size)
-      [ret, errstr]
+      errstr = FFI::MemoryPointer.from_string(" " * 256)
+      err = rd_kafka_oauthbearer_set_token(kafka_ptr, token, expires_at, principal, extensions, 0, errstr, errstr.size)
+      if err != 0
+        return RdkafkaError.new(err), errstr.read_string
+      end
     end
   end
 end

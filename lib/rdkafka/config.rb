@@ -107,9 +107,10 @@ module Rdkafka
     def token_provider=(token_provider)
       raise TypeError.new("Token provider must provide a #token method") unless token_provider.respond_to? :token
       @token_provider = token_provider
-      @oauthbearer_token_refresh_callback = Proc.new do |kafka, config, opaque|
+      @oauthbearer_token_refresh_callback = FFI::Function.new(:void, [:pointer, :pointer, :pointer]) do |kafka, config, opaque|
         err, str = Rdkafka::Bindings.oauthbearer_set_token(kafka, @token_provider.principal, @token_provider)
         if err != nil
+          puts str
           Rdkafka::Bindings.rd_kafka_oauthbearer_set_token_failure(kafka, str)
         end
       end
@@ -136,7 +137,7 @@ module Rdkafka
       Rdkafka::Bindings.rd_kafka_poll_set_consumer(kafka)
       if @token_provider
         # initial call to set the token
-        @oauthbearer_token_refresh_callback.call(kafka, config, opaque)
+        @oauthbearer_token_refresh_callback.call(kafka, config, FFI::Pointer::NULL)
         Rdkafka::Bindings.rd_kafka_conf_set_oauthbearer_token_refresh_cb(config, @oauthbearer_token_refresh_callback) 
       end
 
@@ -159,8 +160,7 @@ module Rdkafka
       Rdkafka::Bindings.rd_kafka_conf_set_dr_msg_cb(config, Rdkafka::Bindings::DeliveryCallback)
       kafka = native_kafka(config, :rd_kafka_producer)
       if @token_provider
-        # initial call to set the token
-        @oauthbearer_token_refresh_callback.call(kafka, config, opaque)
+        @oauthbearer_token_refresh_callback.call(kafka, config, FFI::Pointer::NULL)
         Rdkafka::Bindings.rd_kafka_conf_set_oauthbearer_token_refresh_cb(config, @oauthbearer_token_refresh_callback) 
       end
 
